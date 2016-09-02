@@ -28,4 +28,11 @@ public class BodyPart extends GameScreen
         if (!(this.m_X == snakeX && this.m_Y == snakeY))
             batch.draw(this.m_Body, this.m_X, this.m_Y);
     }
+
+    public boolean hasCollided(int snakeX, int snakeY)
+    {
+        if (this.m_X == snakeX && this.m_Y == snakeY)
+            return true;
+        return false;
+    }
 }

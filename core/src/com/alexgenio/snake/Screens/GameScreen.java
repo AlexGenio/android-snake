@@ -20,7 +20,7 @@ import java.util.Random;
 public class GameScreen extends ScreenAdapter
 {
     private static final float MOVE_TIME = 0.2F;
-    private static int SNAKE_MOVEMENT = 10;
+    private static final int SNAKE_MOVEMENT = 10;
     private static final int RIGHT = 0;
     private static final int LEFT = 1;
     private static final int UP = 2;
@@ -79,14 +79,15 @@ public class GameScreen extends ScreenAdapter
                 this.m_Timer = MOVE_TIME;
 
                 move();
+                checkForBodyCollision();
                 checkSnakeBounds();
                 updateBodyPartsPosition();
             }
-            checkForCollision();
+            checkForAppleCollision();
             positionApple();
-            clearScreen();
-            draw();
         }
+        clearScreen();
+        draw();
     }
 
     /**********************************************************************
@@ -104,29 +105,21 @@ public class GameScreen extends ScreenAdapter
 
         if (_LeftPressed)
         {
-            if (this.m_SnakeDirection == RIGHT)
-                this.m_GameOver = true;
             this.m_SnakeDirection = LEFT;
         }
 
         if (_RightPressed)
         {
-            if (this.m_SnakeDirection == LEFT)
-                this.m_GameOver = true;
             this.m_SnakeDirection = RIGHT;
         }
 
         if (_UpPressed)
         {
-            if (this.m_SnakeDirection == DOWN)
-                this.m_GameOver = true;
             this.m_SnakeDirection = UP;
         }
 
         if (_DownPressed)
         {
-            if (this.m_SnakeDirection == UP)
-                this.m_GameOver = true;
             this.m_SnakeDirection = DOWN;
         }
     }
@@ -162,6 +155,15 @@ public class GameScreen extends ScreenAdapter
         }
     }
 
+    private void checkForBodyCollision()
+    {
+        for (BodyPart _BodyPart : this.m_BodyParts)
+        {
+            if (_BodyPart.hasCollided(this.m_SnakeX, this.m_SnakeY))
+                this.m_GameOver = true;
+        }
+    }
+
     private void checkSnakeBounds()
     {
         // reposition snake on left if past right border
@@ -191,7 +193,7 @@ public class GameScreen extends ScreenAdapter
         }
     }
 
-    private void checkForCollision()
+    private void checkForAppleCollision()
     {
         if (this.m_PlacedApple && this.m_AppleX == this.m_SnakeX && this.m_AppleY == this.m_SnakeY)
         {
