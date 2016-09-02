@@ -1,11 +1,13 @@
 package com.alexgenio.snake.screens;
 
 import com.alexgenio.snake.BodyPart;
+import com.alexgenio.snake.Snake;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Array;
@@ -18,7 +20,7 @@ import java.util.Random;
 public class GameScreen extends ScreenAdapter
 {
     private static final float MOVE_TIME = 0.2F;
-    private static final int SNAKE_MOVEMENT = 10;
+    private static int SNAKE_MOVEMENT = 10;
     private static final int RIGHT = 0;
     private static final int LEFT = 1;
     private static final int UP = 2;
@@ -36,12 +38,17 @@ public class GameScreen extends ScreenAdapter
     private Texture m_Apple;
     private Random m_Rand;
     private Array<BodyPart> m_BodyParts;
+    private OrthographicCamera m_Camera;
 
     private boolean m_PlacedApple;
+    private boolean m_GameOver;
 
-    @Override
-    public void show()
+    public GameScreen()
     {
+        // set viewport to bottom left quadrant of screen
+        this.m_Camera = new OrthographicCamera();
+        this.m_Camera.setToOrtho(false, Snake.WIDTH / 2, Snake.HEIGHT / 2);
+
         this.m_Batch = new SpriteBatch();
         this.m_SnakeHead = new Texture(Gdx.files.internal("snakehead.png"));
         this.m_SnakeBody = new Texture(Gdx.files.internal("snakebody.png"));
@@ -49,28 +56,37 @@ public class GameScreen extends ScreenAdapter
         this.m_Rand = new Random();
         this.m_BodyParts = new Array<BodyPart>();
         this.m_PlacedApple = false;
+        this.m_GameOver = false;
+    }
+
+    @Override
+    public void show()
+    {
+
     }
 
     @Override
     public void render(float delta)
     {
-        pollForInput();
-
-        // deduct time from the last frame
-        this.m_Timer -= delta;
-        if (this.m_Timer <= 0)
+        if (!this.m_GameOver)
         {
-            // frame has completed, move the snake
-            this.m_Timer = MOVE_TIME;
+            pollForInput();
 
-            move();
-            checkSnakeBounds();
-            updateBodyPartsPosition();
+            // deduct time from the last frame
+            this.m_Timer -= delta;
+            if (this.m_Timer <= 0) {
+                // frame has completed, move the snake
+                this.m_Timer = MOVE_TIME;
+
+                move();
+                checkSnakeBounds();
+                updateBodyPartsPosition();
+            }
+            checkForCollision();
+            positionApple();
+            clearScreen();
+            draw();
         }
-        checkForCollision();
-        positionApple();
-        clearScreen();
-        draw();
     }
 
     /**********************************************************************
@@ -87,13 +103,32 @@ public class GameScreen extends ScreenAdapter
         boolean _DownPressed  = Gdx.input.isKeyPressed(Input.Keys.DOWN);
 
         if (_LeftPressed)
+        {
+            if (this.m_SnakeDirection == RIGHT)
+                this.m_GameOver = true;
             this.m_SnakeDirection = LEFT;
+        }
+
         if (_RightPressed)
+        {
+            if (this.m_SnakeDirection == LEFT)
+                this.m_GameOver = true;
             this.m_SnakeDirection = RIGHT;
+        }
+
         if (_UpPressed)
+        {
+            if (this.m_SnakeDirection == DOWN)
+                this.m_GameOver = true;
             this.m_SnakeDirection = UP;
+        }
+
         if (_DownPressed)
+        {
+            if (this.m_SnakeDirection == UP)
+                this.m_GameOver = true;
             this.m_SnakeDirection = DOWN;
+        }
     }
 
     private void move()
@@ -130,20 +165,20 @@ public class GameScreen extends ScreenAdapter
     private void checkSnakeBounds()
     {
         // reposition snake on left if past right border
-        if (this.m_SnakeX >= Gdx.graphics.getWidth())
+        if (this.m_SnakeX >= (int)this.m_Camera.viewportWidth)
             this.m_SnakeX = 0;
 
         // reposition snake on right if past left border
         if (this.m_SnakeX < 0)
-            this.m_SnakeX = Gdx.graphics.getWidth() - SNAKE_MOVEMENT;
+            this.m_SnakeX = (int)this.m_Camera.viewportWidth - SNAKE_MOVEMENT;
 
         // reposition snake on bottom if past top border
-        if (this.m_SnakeY >= Gdx.graphics.getHeight())
+        if (this.m_SnakeY >= (int)this.m_Camera.viewportHeight)
             this.m_SnakeY = 0;
 
         // reposition snake on top if past bottom border
         if (this.m_SnakeY < 0)
-            this.m_SnakeY = Gdx.graphics.getHeight() - SNAKE_MOVEMENT;
+            this.m_SnakeY = (int)this.m_Camera.viewportHeight - SNAKE_MOVEMENT;
     }
 
     private void updateBodyPartsPosition()
@@ -174,8 +209,8 @@ public class GameScreen extends ScreenAdapter
         {
             do
             {
-                this.m_AppleX = this.m_Rand.nextInt(Gdx.graphics.getWidth() / SNAKE_MOVEMENT - 1) * SNAKE_MOVEMENT;
-                this.m_AppleY = this.m_Rand.nextInt(Gdx.graphics.getHeight() / SNAKE_MOVEMENT - 1) * SNAKE_MOVEMENT;
+                this.m_AppleX = this.m_Rand.nextInt((int)this.m_Camera.viewportWidth / SNAKE_MOVEMENT - 1) * SNAKE_MOVEMENT;
+                this.m_AppleY = this.m_Rand.nextInt((int)this.m_Camera.viewportHeight / SNAKE_MOVEMENT - 1) * SNAKE_MOVEMENT;
                 this.m_PlacedApple = true;
             }
             while (this.m_AppleX == this.m_SnakeX && this.m_AppleY == this.m_SnakeY);
@@ -191,6 +226,9 @@ public class GameScreen extends ScreenAdapter
 
     private void draw()
     {
+        // scale position of bird in relation to the viewport
+        this.m_Batch.setProjectionMatrix(this.m_Camera.combined);
+
         this.m_Batch.begin();
 
         this.m_Batch.draw(this.m_SnakeHead, this.m_SnakeX, this.m_SnakeY);
