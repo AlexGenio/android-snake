@@ -7,7 +7,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
 public class Snake extends Game
 {
-	public static final int HEIGHT = 840;
+	public static final int HEIGHT = 810;
 	public static final int WIDTH = 480;
 	public static final String TITLE = "Snake";
 

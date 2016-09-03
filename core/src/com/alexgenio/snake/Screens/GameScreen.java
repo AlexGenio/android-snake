@@ -4,6 +4,7 @@ import com.alexgenio.snake.BodyPart;
 import com.alexgenio.snake.Snake;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -12,6 +13,8 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 
 import java.util.Random;
@@ -32,6 +35,7 @@ public class GameScreen extends ScreenAdapter
 
     private float m_Timer = MOVE_TIME;
     private int m_MapBorderLeft = 0, m_MapBorderRight = 0, m_MapBorderTop = 0, m_MapBorderBottom = 0;
+    private Rectangle m_LeftArrowBounds, m_RightArrowBounds, m_UpArrowBounds, m_DownArrowBounds;
     private int m_SnakeXBeforeUpdate = 0, m_SnakeYBeforeUpdate = 0;
     private int m_SnakeX = 0, m_SnakeY = 0;
     private int m_AppleX = 0, m_AppleY = 0;
@@ -41,6 +45,7 @@ public class GameScreen extends ScreenAdapter
     private Texture m_SnakeHead;
     private Texture m_SnakeBody;
     private Texture m_Apple;
+    private Texture m_LeftArrow, m_RightArrow, m_UpArrow, m_DownArrow;
     private Random m_Rand;
     private Array<BodyPart> m_BodyParts;
     private OrthographicCamera m_Camera;
@@ -48,7 +53,12 @@ public class GameScreen extends ScreenAdapter
     private int m_Score;
     private String m_ScoreText;
     private BitmapFont m_ScoreFont;
-    private static GlyphLayout m_GlyphLayout;
+    private static GlyphLayout m_ScoreLayout;
+
+    private Preferences m_Prefs;
+    private int m_BestScore;
+    private String m_BestScoreText;
+    private static GlyphLayout m_BestScoreLayout;
 
     private boolean m_PlacedApple;
     private boolean m_GameOver;
@@ -70,15 +80,32 @@ public class GameScreen extends ScreenAdapter
         this.m_Score = 0;
         this.m_ScoreText = "Score: ";
         this.m_ScoreFont = new BitmapFont();
-        this.m_GlyphLayout = new GlyphLayout();
+        this.m_ScoreLayout = new GlyphLayout();
+
+        this.m_Prefs = Gdx.app.getPreferences("snake");
+
+        this.m_BestScore  = this.m_Prefs.getInteger("highscore", 0);
+        this.m_BestScoreText = "Best Score: ";
+        this.m_BestScoreLayout = new GlyphLayout();
 
         this.m_PlacedApple = false;
         this.m_GameOver = false;
 
         this.m_MapBorderLeft = MAP_OFFSET;
-        this.m_MapBorderBottom = (int)(this.m_Camera.viewportHeight / 3);
-        this.m_MapBorderTop = (int)(this.m_MapBorderBottom + ((this.m_Camera.viewportHeight / 3 * 2) - (MAP_OFFSET * 4)));
+        this.m_MapBorderBottom = (int)(this.m_Camera.viewportHeight / 3) + MAP_OFFSET * 2;
+        this.m_MapBorderTop = (int)(this.m_MapBorderBottom + ((this.m_Camera.viewportHeight / 3 * 2) - (MAP_OFFSET * 6)));
         this.m_MapBorderRight = (int)(this.m_Camera.viewportWidth - MAP_OFFSET);
+
+        this.m_LeftArrow = new Texture(Gdx.files.internal("leftarrow.png"));
+        this.m_RightArrow = new Texture(Gdx.files.internal("rightarrow.png"));
+        this.m_UpArrow = new Texture(Gdx.files.internal("uparrow.png"));
+        this.m_DownArrow = new Texture(Gdx.files.internal("downarrow.png"));
+
+        this.m_LeftArrowBounds = new Rectangle((this.m_MapBorderRight - this.m_MapBorderLeft) / 3 - 25, this.m_MapBorderBottom / 2 - 25, 50, 45);
+        this.m_RightArrowBounds = new Rectangle((this.m_MapBorderRight - this.m_MapBorderLeft) / 3 * 2, this.m_MapBorderBottom / 2 - 25, 50, 45);
+        this.m_UpArrowBounds = new Rectangle(this.m_Camera.viewportWidth / 2 - 25, (this.m_LeftArrowBounds.y + this.m_LeftArrowBounds.height), 50, 45);
+        this.m_DownArrowBounds = new Rectangle(this.m_Camera.viewportWidth / 2 - 25, (this.m_LeftArrowBounds.y - this.m_LeftArrowBounds.height), 50, 45);
+
 
         this.m_SnakeX = this.m_MapBorderLeft;
         this.m_SnakeY = this.m_MapBorderBottom;
@@ -105,6 +132,10 @@ public class GameScreen extends ScreenAdapter
             checkForAppleCollision();
             positionApple();
         }
+        else
+        {
+            updateHighScore();
+        }
         clearScreen();
         draw();
     }
@@ -117,10 +148,31 @@ public class GameScreen extends ScreenAdapter
 
     private void pollForInput()
     {
-        boolean _LeftPressed  = Gdx.input.isKeyPressed(Input.Keys.LEFT);
-        boolean _RightPressed = Gdx.input.isKeyPressed(Input.Keys.RIGHT);
-        boolean _UpPressed    = Gdx.input.isKeyPressed(Input.Keys.UP);
-        boolean _DownPressed  = Gdx.input.isKeyPressed(Input.Keys.DOWN);
+        boolean _LeftPressed;
+        boolean _RightPressed;
+        boolean _UpPressed;
+        boolean _DownPressed;
+
+        if (Gdx.input.justTouched())
+        {
+            Vector3 _InputCoordinates= new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+
+            // make touch input relative to the camera coordinate region
+            this.m_Camera.unproject(_InputCoordinates);
+
+            _LeftPressed  = this.m_LeftArrowBounds.contains(_InputCoordinates.x, _InputCoordinates.y);
+            _RightPressed = this.m_RightArrowBounds.contains(_InputCoordinates.x, _InputCoordinates.y);
+            _UpPressed    = this.m_UpArrowBounds.contains(_InputCoordinates.x, _InputCoordinates.y);
+            _DownPressed  = this.m_DownArrowBounds.contains(_InputCoordinates.x, _InputCoordinates.y);
+        }
+        else
+        {
+            _LeftPressed  = Gdx.input.isKeyPressed(Input.Keys.LEFT);
+            _RightPressed = Gdx.input.isKeyPressed(Input.Keys.RIGHT);
+            _UpPressed    = Gdx.input.isKeyPressed(Input.Keys.UP);
+            _DownPressed  = Gdx.input.isKeyPressed(Input.Keys.DOWN);
+        }
+
 
         if (_LeftPressed)
         {
@@ -239,6 +291,15 @@ public class GameScreen extends ScreenAdapter
         }
     }
 
+    private void updateHighScore()
+    {
+        if (this.m_Score > this.m_BestScore)
+        {
+            this.m_Prefs.putInteger("highscore", this.m_Score);
+            this.m_Prefs.flush();
+        }
+    }
+
     private void clearScreen()
     {
         // clear the screen (black)
@@ -256,7 +317,7 @@ public class GameScreen extends ScreenAdapter
         this.m_Game.m_Renderer.setProjectionMatrix(this.m_Camera.combined);
         this.m_Game.m_Renderer.begin(ShapeRenderer.ShapeType.Line);
         this.m_Game.m_Renderer.setColor(Color.WHITE);
-        this.m_Game.m_Renderer.rect(this.m_MapBorderLeft, this.m_MapBorderBottom, this.m_Camera.viewportWidth - 20, this.m_Camera.viewportHeight / 3 * 2 - 40);
+        this.m_Game.m_Renderer.rect(this.m_MapBorderLeft, this.m_MapBorderBottom, this.m_Camera.viewportWidth - (MAP_OFFSET * 2), this.m_Camera.viewportHeight / 3 * 2 - (MAP_OFFSET * 6));
         this.m_Game.m_Renderer.end();
 
         this.m_Game.m_Batch.begin();
@@ -273,10 +334,20 @@ public class GameScreen extends ScreenAdapter
         if (this.m_PlacedApple)
             this.m_Game.m_Batch.draw(this.m_Apple, this.m_AppleX, this.m_AppleY);
 
-        // draw current score
+        // draw high score
         this.m_ScoreFont.setColor(Color.WHITE);
-        this.m_GlyphLayout.setText(this.m_ScoreFont, (this.m_ScoreText + this.m_Score));
-        this.m_ScoreFont.draw(this.m_Game.m_Batch, this.m_GlyphLayout, this.m_Camera.viewportWidth - this.m_GlyphLayout.width - 10, this.m_Camera.viewportHeight - this.m_GlyphLayout.height);
+        this.m_BestScoreLayout.setText(this.m_ScoreFont, (this.m_BestScoreText + this.m_BestScore));
+        this.m_ScoreFont.draw(this.m_Game.m_Batch, this.m_BestScoreLayout, MAP_OFFSET, this.m_Camera.viewportHeight - this.m_BestScoreLayout.height);
+
+        // draw current score
+        this.m_ScoreLayout.setText(this.m_ScoreFont, (this.m_ScoreText + this.m_Score));
+        this.m_ScoreFont.draw(this.m_Game.m_Batch, this.m_ScoreLayout, this.m_Camera.viewportWidth - this.m_ScoreLayout.width - MAP_OFFSET, this.m_Camera.viewportHeight - this.m_ScoreLayout.height);
+
+        // draw control pad
+        this.m_Game.m_Batch.draw(this.m_LeftArrow, this.m_LeftArrowBounds.x, this.m_LeftArrowBounds.y, this.m_LeftArrowBounds.width, this.m_LeftArrowBounds.height);
+        this.m_Game.m_Batch.draw(this.m_RightArrow, this.m_RightArrowBounds.x, this.m_RightArrowBounds.y, this.m_RightArrowBounds.width, this.m_RightArrowBounds.height);
+        this.m_Game.m_Batch.draw(this.m_UpArrow, this.m_UpArrowBounds.x, this.m_UpArrowBounds.y, this.m_UpArrowBounds.width, this.m_UpArrowBounds.height);
+        this.m_Game.m_Batch.draw(this.m_DownArrow, this.m_DownArrowBounds.x, this.m_DownArrowBounds.y, this.m_DownArrowBounds.width, this.m_DownArrowBounds.height);
 
         this.m_Game.m_Batch.end();
     }
