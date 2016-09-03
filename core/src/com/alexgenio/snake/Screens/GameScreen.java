@@ -8,7 +8,6 @@ import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
@@ -48,17 +47,16 @@ public class GameScreen extends ScreenAdapter
     private Texture m_LeftArrow, m_RightArrow, m_UpArrow, m_DownArrow;
     private Random m_Rand;
     private Array<BodyPart> m_BodyParts;
-    private OrthographicCamera m_Camera;
 
     private int m_Score;
     private String m_ScoreText;
     private BitmapFont m_ScoreFont;
-    private static GlyphLayout m_ScoreLayout;
+    private GlyphLayout m_ScoreLayout;
 
     private Preferences m_Prefs;
     private int m_BestScore;
     private String m_BestScoreText;
-    private static GlyphLayout m_BestScoreLayout;
+    private GlyphLayout m_BestScoreLayout;
 
     private boolean m_PlacedApple;
     private boolean m_GameOver;
@@ -68,8 +66,7 @@ public class GameScreen extends ScreenAdapter
         this.m_Game = Game;
 
         // set viewport to bottom left quadrant of screen
-        this.m_Camera = new OrthographicCamera();
-        this.m_Camera.setToOrtho(false, Snake.WIDTH / 2, Snake.HEIGHT / 2);
+        this.m_Game.m_Camera.setToOrtho(false, Snake.WIDTH / 2, Snake.HEIGHT / 2);
 
         this.m_SnakeHead = new Texture(Gdx.files.internal("snakehead.png"));
         this.m_SnakeBody = new Texture(Gdx.files.internal("snakebody.png"));
@@ -92,9 +89,9 @@ public class GameScreen extends ScreenAdapter
         this.m_GameOver = false;
 
         this.m_MapBorderLeft = MAP_OFFSET;
-        this.m_MapBorderBottom = (int)(this.m_Camera.viewportHeight / 3) + MAP_OFFSET * 2;
-        this.m_MapBorderTop = (int)(this.m_MapBorderBottom + ((this.m_Camera.viewportHeight / 3 * 2) - (MAP_OFFSET * 6)));
-        this.m_MapBorderRight = (int)(this.m_Camera.viewportWidth - MAP_OFFSET);
+        this.m_MapBorderBottom = (int)(this.m_Game.m_Camera.viewportHeight / 3) + MAP_OFFSET * 2;
+        this.m_MapBorderTop = (int)(this.m_MapBorderBottom + ((this.m_Game.m_Camera.viewportHeight / 3 * 2) - (MAP_OFFSET * 6)));
+        this.m_MapBorderRight = (int)(this.m_Game.m_Camera.viewportWidth - MAP_OFFSET);
 
         this.m_LeftArrow = new Texture(Gdx.files.internal("leftarrow.png"));
         this.m_RightArrow = new Texture(Gdx.files.internal("rightarrow.png"));
@@ -103,8 +100,8 @@ public class GameScreen extends ScreenAdapter
 
         this.m_LeftArrowBounds = new Rectangle((this.m_MapBorderRight - this.m_MapBorderLeft) / 3 - 25, this.m_MapBorderBottom / 2 - 25, 50, 45);
         this.m_RightArrowBounds = new Rectangle((this.m_MapBorderRight - this.m_MapBorderLeft) / 3 * 2, this.m_MapBorderBottom / 2 - 25, 50, 45);
-        this.m_UpArrowBounds = new Rectangle(this.m_Camera.viewportWidth / 2 - 25, (this.m_LeftArrowBounds.y + this.m_LeftArrowBounds.height), 50, 45);
-        this.m_DownArrowBounds = new Rectangle(this.m_Camera.viewportWidth / 2 - 25, (this.m_LeftArrowBounds.y - this.m_LeftArrowBounds.height), 50, 45);
+        this.m_UpArrowBounds = new Rectangle(this.m_Game.m_Camera.viewportWidth / 2 - 25, (this.m_LeftArrowBounds.y + this.m_LeftArrowBounds.height), 50, 45);
+        this.m_DownArrowBounds = new Rectangle(this.m_Game.m_Camera.viewportWidth / 2 - 25, (this.m_LeftArrowBounds.y - this.m_LeftArrowBounds.height), 50, 45);
 
 
         this.m_SnakeX = this.m_MapBorderLeft;
@@ -140,6 +137,20 @@ public class GameScreen extends ScreenAdapter
         draw();
     }
 
+    @Override
+    public void dispose()
+    {
+        this.m_LeftArrow.dispose();
+        this.m_RightArrow.dispose();
+        this.m_UpArrow.dispose();
+        this.m_DownArrow.dispose();
+
+        this.m_ScoreFont.dispose();
+        this.m_SnakeHead.dispose();
+        this.m_SnakeBody.dispose();
+        this.m_Apple.dispose();
+    }
+
     /**********************************************************************
      *
      *                     RENDER HELPER FUNCTIONS
@@ -158,7 +169,7 @@ public class GameScreen extends ScreenAdapter
             Vector3 _InputCoordinates= new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
 
             // make touch input relative to the camera coordinate region
-            this.m_Camera.unproject(_InputCoordinates);
+            this.m_Game.m_Camera.unproject(_InputCoordinates);
 
             _LeftPressed  = this.m_LeftArrowBounds.contains(_InputCoordinates.x, _InputCoordinates.y);
             _RightPressed = this.m_RightArrowBounds.contains(_InputCoordinates.x, _InputCoordinates.y);
@@ -295,6 +306,7 @@ public class GameScreen extends ScreenAdapter
     {
         if (this.m_Score > this.m_BestScore)
         {
+            this.m_BestScore = this.m_Score;
             this.m_Prefs.putInteger("highscore", this.m_Score);
             this.m_Prefs.flush();
         }
@@ -310,14 +322,14 @@ public class GameScreen extends ScreenAdapter
     private void draw()
     {
         // scale position of bird in relation to the viewport
-        this.m_Game.m_Batch.setProjectionMatrix(this.m_Camera.combined);
+        this.m_Game.m_Batch.setProjectionMatrix(this.m_Game.m_Camera.combined);
 
         // draw map border first
         // this avoids two objects drawing at the same time (i.e. sprite batch and shape renderer)
-        this.m_Game.m_Renderer.setProjectionMatrix(this.m_Camera.combined);
+        this.m_Game.m_Renderer.setProjectionMatrix(this.m_Game.m_Camera.combined);
         this.m_Game.m_Renderer.begin(ShapeRenderer.ShapeType.Line);
         this.m_Game.m_Renderer.setColor(Color.WHITE);
-        this.m_Game.m_Renderer.rect(this.m_MapBorderLeft, this.m_MapBorderBottom, this.m_Camera.viewportWidth - (MAP_OFFSET * 2), this.m_Camera.viewportHeight / 3 * 2 - (MAP_OFFSET * 6));
+        this.m_Game.m_Renderer.rect(this.m_MapBorderLeft, this.m_MapBorderBottom, this.m_Game.m_Camera.viewportWidth - (MAP_OFFSET * 2), this.m_Game.m_Camera.viewportHeight / 3 * 2 - (MAP_OFFSET * 6));
         this.m_Game.m_Renderer.end();
 
         this.m_Game.m_Batch.begin();
@@ -337,11 +349,11 @@ public class GameScreen extends ScreenAdapter
         // draw high score
         this.m_ScoreFont.setColor(Color.WHITE);
         this.m_BestScoreLayout.setText(this.m_ScoreFont, (this.m_BestScoreText + this.m_BestScore));
-        this.m_ScoreFont.draw(this.m_Game.m_Batch, this.m_BestScoreLayout, MAP_OFFSET, this.m_Camera.viewportHeight - this.m_BestScoreLayout.height);
+        this.m_ScoreFont.draw(this.m_Game.m_Batch, this.m_BestScoreLayout, MAP_OFFSET, this.m_Game.m_Camera.viewportHeight - this.m_BestScoreLayout.height);
 
         // draw current score
         this.m_ScoreLayout.setText(this.m_ScoreFont, (this.m_ScoreText + this.m_Score));
-        this.m_ScoreFont.draw(this.m_Game.m_Batch, this.m_ScoreLayout, this.m_Camera.viewportWidth - this.m_ScoreLayout.width - MAP_OFFSET, this.m_Camera.viewportHeight - this.m_ScoreLayout.height);
+        this.m_ScoreFont.draw(this.m_Game.m_Batch, this.m_ScoreLayout, this.m_Game.m_Camera.viewportWidth - this.m_ScoreLayout.width - MAP_OFFSET, this.m_Game.m_Camera.viewportHeight - this.m_ScoreLayout.height);
 
         // draw control pad
         this.m_Game.m_Batch.draw(this.m_LeftArrow, this.m_LeftArrowBounds.x, this.m_LeftArrowBounds.y, this.m_LeftArrowBounds.width, this.m_LeftArrowBounds.height);

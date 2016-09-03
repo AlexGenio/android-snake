@@ -1,7 +1,9 @@
 package com.alexgenio.snake;
 
 import com.alexgenio.snake.screens.GameScreen;
+import com.alexgenio.snake.screens.MainMenuScreen;
 import com.badlogic.gdx.Game;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
@@ -13,18 +15,21 @@ public class Snake extends Game
 
 	public SpriteBatch m_Batch;
 	public ShapeRenderer m_Renderer;
+	public OrthographicCamera m_Camera;
 
 	@Override
 	public void create()
 	{
 		this.m_Batch = new SpriteBatch();
 		this.m_Renderer = new ShapeRenderer();
-		this.setScreen(new GameScreen(this));
+		this.m_Camera = new OrthographicCamera();
+		this.setScreen(new MainMenuScreen(this));
 	}
 
 	@Override
 	public void dispose()
 	{
 		this.m_Batch.dispose();
+		this.m_Renderer.dispose();
 	}
 }
