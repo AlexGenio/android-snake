@@ -9,7 +9,8 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.utils.Array;
 
 import java.util.Random;
@@ -21,6 +22,7 @@ public class GameScreen extends ScreenAdapter
 {
     private static final float MOVE_TIME = 0.2F;
     private static final int SNAKE_MOVEMENT = 10;
+    private static final int POINT_INCREMENT = 10;
     private static final int RIGHT = 0;
     private static final int LEFT = 1;
     private static final int UP = 2;
@@ -32,7 +34,7 @@ public class GameScreen extends ScreenAdapter
     private int m_AppleX = 0, m_AppleY = 0;
     private int m_SnakeDirection = RIGHT;
 
-    private SpriteBatch m_Batch;
+    private final Snake m_Game;
     private Texture m_SnakeHead;
     private Texture m_SnakeBody;
     private Texture m_Apple;
@@ -40,29 +42,35 @@ public class GameScreen extends ScreenAdapter
     private Array<BodyPart> m_BodyParts;
     private OrthographicCamera m_Camera;
 
+    private int m_Score;
+    private String m_ScoreText;
+    private BitmapFont m_ScoreFont;
+    private static GlyphLayout m_GlyphLayout;
+
     private boolean m_PlacedApple;
     private boolean m_GameOver;
 
-    public GameScreen()
+    public GameScreen(final Snake Game)
     {
+        this.m_Game = Game;
+
         // set viewport to bottom left quadrant of screen
         this.m_Camera = new OrthographicCamera();
         this.m_Camera.setToOrtho(false, Snake.WIDTH / 2, Snake.HEIGHT / 2);
 
-        this.m_Batch = new SpriteBatch();
         this.m_SnakeHead = new Texture(Gdx.files.internal("snakehead.png"));
         this.m_SnakeBody = new Texture(Gdx.files.internal("snakebody.png"));
         this.m_Apple = new Texture(Gdx.files.internal("apple.png"));
         this.m_Rand = new Random();
         this.m_BodyParts = new Array<BodyPart>();
+
+        this.m_Score = 0;
+        this.m_ScoreText = "Score: ";
+        this.m_ScoreFont = new BitmapFont();
+        this.m_GlyphLayout = new GlyphLayout();
+
         this.m_PlacedApple = false;
         this.m_GameOver = false;
-    }
-
-    @Override
-    public void show()
-    {
-
     }
 
     @Override
@@ -202,6 +210,7 @@ public class GameScreen extends ScreenAdapter
             this.m_BodyParts.insert(0, _BodyPart);
 
             this.m_PlacedApple = false;
+            this.m_Score += POINT_INCREMENT;
         }
     }
 
@@ -229,19 +238,23 @@ public class GameScreen extends ScreenAdapter
     private void draw()
     {
         // scale position of bird in relation to the viewport
-        this.m_Batch.setProjectionMatrix(this.m_Camera.combined);
+        this.m_Game.m_Batch.setProjectionMatrix(this.m_Camera.combined);
 
-        this.m_Batch.begin();
+        this.m_Game.m_Batch.begin();
 
-        this.m_Batch.draw(this.m_SnakeHead, this.m_SnakeX, this.m_SnakeY);
+        this.m_Game.m_Batch.draw(this.m_SnakeHead, this.m_SnakeX, this.m_SnakeY);
 
         for (BodyPart _BodyPart : this.m_BodyParts) {
-            _BodyPart.draw(this.m_Batch, this.m_SnakeX, this.m_SnakeY);
+            _BodyPart.draw(this.m_Game.m_Batch, this.m_SnakeX, this.m_SnakeY);
         }
 
         if (this.m_PlacedApple)
-            this.m_Batch.draw(this.m_Apple, this.m_AppleX, this.m_AppleY);
+            this.m_Game.m_Batch.draw(this.m_Apple, this.m_AppleX, this.m_AppleY);
 
-        this.m_Batch.end();
+        this.m_ScoreFont.setColor(Color.WHITE);
+        this.m_GlyphLayout.setText(this.m_ScoreFont, (this.m_ScoreText + this.m_Score));
+        this.m_ScoreFont.draw(this.m_Game.m_Batch, this.m_GlyphLayout, this.m_Camera.viewportWidth - this.m_GlyphLayout.width - 10, this.m_Camera.viewportHeight - this.m_GlyphLayout.height);
+
+        this.m_Game.m_Batch.end();
     }
 }

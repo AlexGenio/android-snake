@@ -1,13 +1,12 @@
 package com.alexgenio.snake;
 
-import com.alexgenio.snake.screens.GameScreen;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 
 /**
  * Created by AlexGenio on 2016-09-01.
  */
-public class BodyPart extends GameScreen
+public class BodyPart
 {
     private int m_X, m_Y;
     private Texture m_Body;
