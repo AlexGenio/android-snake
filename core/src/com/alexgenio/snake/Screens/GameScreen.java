@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Array;
 
 import java.util.Random;
@@ -23,12 +24,14 @@ public class GameScreen extends ScreenAdapter
     private static final float MOVE_TIME = 0.2F;
     private static final int SNAKE_MOVEMENT = 10;
     private static final int POINT_INCREMENT = 10;
+    private static final int MAP_OFFSET = 10;
     private static final int RIGHT = 0;
     private static final int LEFT = 1;
     private static final int UP = 2;
     private static final int DOWN = 3;
 
     private float m_Timer = MOVE_TIME;
+    private int m_MapBorderLeft = 0, m_MapBorderRight = 0, m_MapBorderTop = 0, m_MapBorderBottom = 0;
     private int m_SnakeXBeforeUpdate = 0, m_SnakeYBeforeUpdate = 0;
     private int m_SnakeX = 0, m_SnakeY = 0;
     private int m_AppleX = 0, m_AppleY = 0;
@@ -71,6 +74,14 @@ public class GameScreen extends ScreenAdapter
 
         this.m_PlacedApple = false;
         this.m_GameOver = false;
+
+        this.m_MapBorderLeft = MAP_OFFSET;
+        this.m_MapBorderBottom = (int)(this.m_Camera.viewportHeight / 3);
+        this.m_MapBorderTop = (int)(this.m_MapBorderBottom + ((this.m_Camera.viewportHeight / 3 * 2) - (MAP_OFFSET * 4)));
+        this.m_MapBorderRight = (int)(this.m_Camera.viewportWidth - MAP_OFFSET);
+
+        this.m_SnakeX = this.m_MapBorderLeft;
+        this.m_SnakeY = this.m_MapBorderBottom;
     }
 
     @Override
@@ -175,20 +186,20 @@ public class GameScreen extends ScreenAdapter
     private void checkSnakeBounds()
     {
         // reposition snake on left if past right border
-        if (this.m_SnakeX >= (int)this.m_Camera.viewportWidth)
-            this.m_SnakeX = 0;
+        if (this.m_SnakeX >= this.m_MapBorderRight)
+            this.m_SnakeX = this.m_MapBorderLeft;
 
         // reposition snake on right if past left border
-        if (this.m_SnakeX < 0)
-            this.m_SnakeX = (int)this.m_Camera.viewportWidth - SNAKE_MOVEMENT;
+        if (this.m_SnakeX < this.m_MapBorderLeft)
+            this.m_SnakeX = this.m_MapBorderRight - MAP_OFFSET;
 
         // reposition snake on bottom if past top border
-        if (this.m_SnakeY >= (int)this.m_Camera.viewportHeight)
-            this.m_SnakeY = 0;
+        if (this.m_SnakeY >= this.m_MapBorderTop)
+            this.m_SnakeY = this.m_MapBorderBottom;
 
         // reposition snake on top if past bottom border
-        if (this.m_SnakeY < 0)
-            this.m_SnakeY = (int)this.m_Camera.viewportHeight - SNAKE_MOVEMENT;
+        if (this.m_SnakeY < this.m_MapBorderBottom)
+            this.m_SnakeY = this.m_MapBorderTop - MAP_OFFSET;
     }
 
     private void updateBodyPartsPosition()
@@ -220,8 +231,8 @@ public class GameScreen extends ScreenAdapter
         {
             do
             {
-                this.m_AppleX = this.m_Rand.nextInt((int)this.m_Camera.viewportWidth / SNAKE_MOVEMENT - 1) * SNAKE_MOVEMENT;
-                this.m_AppleY = this.m_Rand.nextInt((int)this.m_Camera.viewportHeight / SNAKE_MOVEMENT - 1) * SNAKE_MOVEMENT;
+                this.m_AppleX = this.m_Rand.nextInt(this.m_MapBorderRight / SNAKE_MOVEMENT - 1) * SNAKE_MOVEMENT + this.m_MapBorderLeft;
+                this.m_AppleY = this.m_Rand.nextInt((this.m_MapBorderTop - this.m_MapBorderBottom) / SNAKE_MOVEMENT - 1) * SNAKE_MOVEMENT + this.m_MapBorderBottom;
                 this.m_PlacedApple = true;
             }
             while (this.m_AppleX == this.m_SnakeX && this.m_AppleY == this.m_SnakeY);
@@ -240,17 +251,29 @@ public class GameScreen extends ScreenAdapter
         // scale position of bird in relation to the viewport
         this.m_Game.m_Batch.setProjectionMatrix(this.m_Camera.combined);
 
+        // draw map border first
+        // this avoids two objects drawing at the same time (i.e. sprite batch and shape renderer)
+        this.m_Game.m_Renderer.setProjectionMatrix(this.m_Camera.combined);
+        this.m_Game.m_Renderer.begin(ShapeRenderer.ShapeType.Line);
+        this.m_Game.m_Renderer.setColor(Color.WHITE);
+        this.m_Game.m_Renderer.rect(this.m_MapBorderLeft, this.m_MapBorderBottom, this.m_Camera.viewportWidth - 20, this.m_Camera.viewportHeight / 3 * 2 - 40);
+        this.m_Game.m_Renderer.end();
+
         this.m_Game.m_Batch.begin();
 
+        // draw snake head
         this.m_Game.m_Batch.draw(this.m_SnakeHead, this.m_SnakeX, this.m_SnakeY);
 
+        // draw snake body
         for (BodyPart _BodyPart : this.m_BodyParts) {
             _BodyPart.draw(this.m_Game.m_Batch, this.m_SnakeX, this.m_SnakeY);
         }
 
+        // draw apple
         if (this.m_PlacedApple)
             this.m_Game.m_Batch.draw(this.m_Apple, this.m_AppleX, this.m_AppleY);
 
+        // draw current score
         this.m_ScoreFont.setColor(Color.WHITE);
         this.m_GlyphLayout.setText(this.m_ScoreFont, (this.m_ScoreText + this.m_Score));
         this.m_ScoreFont.draw(this.m_Game.m_Batch, this.m_GlyphLayout, this.m_Camera.viewportWidth - this.m_GlyphLayout.width - 10, this.m_Camera.viewportHeight - this.m_GlyphLayout.height);
