@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 
@@ -50,13 +51,21 @@ public class GameScreen extends ScreenAdapter
 
     private int m_Score;
     private String m_ScoreText;
-    private BitmapFont m_ScoreFont;
+    private BitmapFont m_Font;
     private GlyphLayout m_ScoreLayout;
 
     private Preferences m_Prefs;
     private int m_BestScore;
     private String m_BestScoreText;
     private GlyphLayout m_BestScoreLayout;
+
+    private String m_RetryText;
+    private GlyphLayout m_RetryLayout;
+    private Rectangle m_RetryBounds;
+
+    private String m_ReturnText;
+    private GlyphLayout m_ReturnLayout;
+    private Rectangle m_ReturnBounds;
 
     private boolean m_PlacedApple;
     private boolean m_GameOver;
@@ -76,7 +85,7 @@ public class GameScreen extends ScreenAdapter
 
         this.m_Score = 0;
         this.m_ScoreText = "Score: ";
-        this.m_ScoreFont = new BitmapFont();
+        this.m_Font = new BitmapFont();
         this.m_ScoreLayout = new GlyphLayout();
 
         this.m_Prefs = Gdx.app.getPreferences("snake");
@@ -92,6 +101,14 @@ public class GameScreen extends ScreenAdapter
         this.m_MapBorderBottom = (int)(this.m_Game.m_Camera.viewportHeight / 3) + MAP_OFFSET * 2;
         this.m_MapBorderTop = (int)(this.m_MapBorderBottom + ((this.m_Game.m_Camera.viewportHeight / 3 * 2) - (MAP_OFFSET * 6)));
         this.m_MapBorderRight = (int)(this.m_Game.m_Camera.viewportWidth - MAP_OFFSET);
+
+        this.m_RetryText = "RETRY?";
+        this.m_RetryBounds = new Rectangle((this.m_MapBorderRight + this.m_MapBorderLeft) / 2 - (5 * MAP_OFFSET), (this.m_MapBorderBottom + this.m_MapBorderTop) / 2 + (2 * MAP_OFFSET), Snake.BUTTON_WIDTH, Snake.BUTTON_HEIGHT);
+        this.m_RetryLayout = new GlyphLayout();
+
+        this.m_ReturnText = "MAIN MENU";
+        this.m_ReturnBounds = new Rectangle((this.m_MapBorderRight + this.m_MapBorderLeft) / 2 - (5 * MAP_OFFSET), (this.m_MapBorderBottom + this.m_MapBorderTop) / 2 - (4 * MAP_OFFSET), Snake.BUTTON_WIDTH, Snake.BUTTON_HEIGHT);
+        this.m_ReturnLayout = new GlyphLayout();
 
         this.m_LeftArrow = new Texture(Gdx.files.internal("leftarrow.png"));
         this.m_RightArrow = new Texture(Gdx.files.internal("rightarrow.png"));
@@ -132,6 +149,7 @@ public class GameScreen extends ScreenAdapter
         else
         {
             updateHighScore();
+            pollForUserChoice();
         }
         clearScreen();
         draw();
@@ -145,7 +163,7 @@ public class GameScreen extends ScreenAdapter
         this.m_UpArrow.dispose();
         this.m_DownArrow.dispose();
 
-        this.m_ScoreFont.dispose();
+        this.m_Font.dispose();
         this.m_SnakeHead.dispose();
         this.m_SnakeBody.dispose();
         this.m_Apple.dispose();
@@ -203,6 +221,32 @@ public class GameScreen extends ScreenAdapter
         if (_DownPressed)
         {
             this.m_SnakeDirection = DOWN;
+        }
+    }
+
+    private void pollForUserChoice()
+    {
+        boolean _RetryPressed;
+        boolean _MainMenuPressed;
+
+        if (Gdx.input.justTouched())
+        {
+            Vector3 _InputCoordinates= new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+
+            // make touch input relative to the camera coordinate region
+            this.m_Game.m_Camera.unproject(_InputCoordinates);
+
+            _RetryPressed    = this.m_RetryBounds.contains(_InputCoordinates.x, _InputCoordinates.y);
+            _MainMenuPressed = this.m_ReturnBounds.contains(_InputCoordinates.x, _InputCoordinates.y);
+
+            if (_RetryPressed)
+            {
+                this.m_Game.setScreen(new GameScreen(this.m_Game));
+            }
+            else if (_MainMenuPressed)
+            {
+                this.m_Game.setScreen(new MainMenuScreen(this.m_Game));
+            }
         }
     }
 
@@ -347,13 +391,13 @@ public class GameScreen extends ScreenAdapter
             this.m_Game.m_Batch.draw(this.m_Apple, this.m_AppleX, this.m_AppleY);
 
         // draw high score
-        this.m_ScoreFont.setColor(Color.WHITE);
-        this.m_BestScoreLayout.setText(this.m_ScoreFont, (this.m_BestScoreText + this.m_BestScore));
-        this.m_ScoreFont.draw(this.m_Game.m_Batch, this.m_BestScoreLayout, MAP_OFFSET, this.m_Game.m_Camera.viewportHeight - this.m_BestScoreLayout.height);
+        this.m_Font.setColor(Color.WHITE);
+        this.m_BestScoreLayout.setText(this.m_Font, (this.m_BestScoreText + this.m_BestScore));
+        this.m_Font.draw(this.m_Game.m_Batch, this.m_BestScoreLayout, MAP_OFFSET, this.m_Game.m_Camera.viewportHeight - this.m_BestScoreLayout.height);
 
         // draw current score
-        this.m_ScoreLayout.setText(this.m_ScoreFont, (this.m_ScoreText + this.m_Score));
-        this.m_ScoreFont.draw(this.m_Game.m_Batch, this.m_ScoreLayout, this.m_Game.m_Camera.viewportWidth - this.m_ScoreLayout.width - MAP_OFFSET, this.m_Game.m_Camera.viewportHeight - this.m_ScoreLayout.height);
+        this.m_ScoreLayout.setText(this.m_Font, (this.m_ScoreText + this.m_Score));
+        this.m_Font.draw(this.m_Game.m_Batch, this.m_ScoreLayout, this.m_Game.m_Camera.viewportWidth - this.m_ScoreLayout.width - MAP_OFFSET, this.m_Game.m_Camera.viewportHeight - this.m_ScoreLayout.height);
 
         // draw control pad
         this.m_Game.m_Batch.draw(this.m_LeftArrow, this.m_LeftArrowBounds.x, this.m_LeftArrowBounds.y, this.m_LeftArrowBounds.width, this.m_LeftArrowBounds.height);
@@ -361,6 +405,64 @@ public class GameScreen extends ScreenAdapter
         this.m_Game.m_Batch.draw(this.m_UpArrow, this.m_UpArrowBounds.x, this.m_UpArrowBounds.y, this.m_UpArrowBounds.width, this.m_UpArrowBounds.height);
         this.m_Game.m_Batch.draw(this.m_DownArrow, this.m_DownArrowBounds.x, this.m_DownArrowBounds.y, this.m_DownArrowBounds.width, this.m_DownArrowBounds.height);
 
+        this.m_Game.m_Batch.end();
+
+        if (this.m_GameOver)
+        {
+            drawRetryButton();
+            drawMainMenuButton();
+        }
+    }
+
+    private void drawRetryButton()
+    {
+        // draw the classic button
+        this.m_Game.m_Renderer.setProjectionMatrix(this.m_Game.m_Camera.combined);
+        this.m_Game.m_Renderer.begin(ShapeRenderer.ShapeType.Filled);
+        this.m_Game.m_Renderer.setColor(Color.BLUE);
+        this.m_Game.m_Renderer.rect(this.m_RetryBounds.x, this.m_RetryBounds.y, this.m_RetryBounds.width, this.m_RetryBounds.height);
+        this.m_Game.m_Renderer.end();
+
+        this.m_Game.m_Renderer.begin(ShapeRenderer.ShapeType.Line);
+        this.m_Game.m_Renderer.setColor(Color.WHITE);
+        this.m_Game.m_Renderer.rect(this.m_RetryBounds.x, this.m_RetryBounds.y, this.m_RetryBounds.width, this.m_RetryBounds.height);
+        this.m_Game.m_Renderer.end();
+
+        // draw classic button text
+        this.m_Game.m_Batch.begin();
+        this.m_Font.setColor(Color.BLACK);
+        this.m_RetryLayout.setText(this.m_Font, this.m_RetryText);
+
+        Vector2 _ClassicCenter = new Vector2();
+        this.m_RetryBounds.getCenter(_ClassicCenter);
+
+        this.m_Font.draw(this.m_Game.m_Batch, this.m_RetryLayout, _ClassicCenter.x - this.m_RetryLayout.width / 2, _ClassicCenter.y + this.m_RetryLayout.height / 2);
+        this.m_Game.m_Batch.end();
+    }
+
+    private void drawMainMenuButton()
+    {
+        // draw the classic button
+        this.m_Game.m_Renderer.setProjectionMatrix(this.m_Game.m_Camera.combined);
+        this.m_Game.m_Renderer.begin(ShapeRenderer.ShapeType.Filled);
+        this.m_Game.m_Renderer.setColor(Color.BLUE);
+        this.m_Game.m_Renderer.rect(this.m_ReturnBounds.x, this.m_ReturnBounds.y, this.m_ReturnBounds.width, this.m_ReturnBounds.height);
+        this.m_Game.m_Renderer.end();
+
+        this.m_Game.m_Renderer.begin(ShapeRenderer.ShapeType.Line);
+        this.m_Game.m_Renderer.setColor(Color.WHITE);
+        this.m_Game.m_Renderer.rect(this.m_ReturnBounds.x, this.m_ReturnBounds.y, this.m_ReturnBounds.width, this.m_ReturnBounds.height);
+        this.m_Game.m_Renderer.end();
+
+        // draw classic button text
+        this.m_Game.m_Batch.begin();
+        this.m_Font.setColor(Color.BLACK);
+        this.m_ReturnLayout.setText(this.m_Font, this.m_ReturnText);
+
+        Vector2 _ClassicCenter = new Vector2();
+        this.m_ReturnBounds.getCenter(_ClassicCenter);
+
+        this.m_Font.draw(this.m_Game.m_Batch, this.m_ReturnLayout, _ClassicCenter.x - this.m_ReturnLayout.width / 2, _ClassicCenter.y + this.m_ReturnLayout.height / 2);
         this.m_Game.m_Batch.end();
     }
 }

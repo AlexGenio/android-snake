@@ -11,6 +11,9 @@ public class Snake extends Game
 {
 	public static final int HEIGHT = 810;
 	public static final int WIDTH = 480;
+	public static final int BUTTON_WIDTH = 100;
+	public static final int BUTTON_HEIGHT = 40;
+
 	public static final String TITLE = "Snake";
 
 	public SpriteBatch m_Batch;

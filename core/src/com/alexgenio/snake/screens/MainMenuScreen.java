@@ -18,8 +18,6 @@ import com.badlogic.gdx.math.Vector3;
  */
 public class MainMenuScreen extends ScreenAdapter
 {
-    private static final int BUTTON_WIDTH = 90;
-    private static final int BUTTON_HEIGHT = 40;
     private static final int MENU_OFFSET = 30;
 
     private final Snake m_Game;
@@ -41,7 +39,7 @@ public class MainMenuScreen extends ScreenAdapter
 
         this.m_ClassicText = "CLASSIC";
         this.m_ClassicLayout = new GlyphLayout();
-        this.m_ClassicBounds = new Rectangle(this.m_Game.m_Camera.position.x - (BUTTON_WIDTH / 2), this.m_Game.m_Camera.position.y - (BUTTON_HEIGHT / 2) - MENU_OFFSET, BUTTON_WIDTH, BUTTON_HEIGHT);
+        this.m_ClassicBounds = new Rectangle(this.m_Game.m_Camera.position.x - (Snake.BUTTON_WIDTH / 2), this.m_Game.m_Camera.position.y - (Snake.BUTTON_HEIGHT / 2) - MENU_OFFSET, Snake.BUTTON_WIDTH, Snake.BUTTON_HEIGHT);
     }
 
     @Override
